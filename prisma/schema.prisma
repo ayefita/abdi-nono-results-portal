@@ -1,0 +1,304 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  DIRECTOR
+  STUDENT
+}
+
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum StudentStatus {
+  ACTIVE
+  GRADUATED
+  LEFT
+}
+
+model SchoolSettings {
+  id                    String   @id @default("school")
+  nameEn                String
+  nameOm                String
+  nameAm                String
+  shortName             String   @default("ANMPS")
+  passMark              Float    @default(50)
+  showEthiopianCalendar Boolean  @default(true)
+  logoData              Bytes?
+  logoMime              String?
+  gradeScale            Json?
+  studentIdFormat       String   @default("AB{seq:4}")
+  teacherIdFormat       String   @default("ABT{seq:3}")
+  studentSeq            Int      @default(0)
+  teacherSeq            Int      @default(0)
+  updatedAt             DateTime @updatedAt
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  username           String   @unique
+  passwordHash       String
+  role               Role
+  fullName           String
+  firstName          String   @default("")
+  fatherName         String   @default("")
+  sex                Sex?
+  phone              String?
+  staffCode          String?  @unique
+  mustChangePassword Boolean  @default(false)
+  preferredLanguage  String   @default("en")
+  tokenVersion       Int      @default(0)
+  teacher            Teacher?
+  student            Student?
+  marksEntered       Mark[]   @relation("MarkEnteredBy")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Teacher {
+  id          String              @id @default(cuid())
+  userId      String              @unique
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments TeacherAssignment[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model Student {
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentCode     String        @unique
+  firstName       String
+  fatherName      String
+  grandfatherName String        @default("")
+  sex             Sex
+  status          StudentStatus @default(ACTIVE)
+  placements      Placement[]
+  marks           Mark[]
+  comments        ReportComment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Grade {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  nameOm      String      @default("")
+  nameAm      String      @default("")
+  sortOrder   Int
+  nextGradeId String?
+  nextGrade   Grade?      @relation("GradeNext", fields: [nextGradeId], references: [id], onDelete: SetNull)
+  previous    Grade[]     @relation("GradeNext")
+  sections    Section[]
+  streams     Stream[]
+  subjects    Subject[]
+  placements  Placement[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Section {
+  id          String              @id @default(cuid())
+  gradeId     String
+  grade       Grade               @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  name        String
+  placements  Placement[]
+  assignments TeacherAssignment[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([gradeId, name])
+}
+
+model Stream {
+  id         String      @id @default(cuid())
+  gradeId    String
+  grade      Grade       @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  nameEn     String
+  nameOm     String
+  nameAm     String
+  subjects   Subject[]
+  placements Placement[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([gradeId, nameEn])
+}
+
+model Subject {
+  id          String                @id @default(cuid())
+  gradeId     String
+  grade       Grade                 @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  streamId    String?
+  stream      Stream?               @relation(fields: [streamId], references: [id], onDelete: Restrict)
+  code        String
+  nameEn      String
+  nameOm      String
+  nameAm      String
+  sortOrder   Int                   @default(0)
+  components  AssessmentComponent[]
+  assignments TeacherAssignment[]
+  marks       Mark[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([gradeId])
+}
+
+model AssessmentComponent {
+  id        String   @id @default(cuid())
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  nameEn    String
+  nameOm    String
+  nameAm    String
+  maxScore   Float
+  sortOrder  Int
+  kind       String   @default("classwork")
+  assessedOn DateTime?
+  isFormula  Boolean  @default(false)
+  formula    String?
+  marks      Mark[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AcademicYear {
+  id          String              @id @default(cuid())
+  nameEn      String              @unique
+  nameOm      String
+  nameAm      String
+  startDate   DateTime
+  endDate     DateTime
+  isCurrent   Boolean             @default(false)
+  semesters   Semester[]
+  placements  Placement[]
+  assignments TeacherAssignment[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model Semester {
+  id             String       @id @default(cuid())
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  nameEn         String
+  nameOm         String
+  nameAm         String
+  sortOrder      Int
+  isPublished    Boolean      @default(false)
+  marks          Mark[]
+  comments       ReportComment[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([academicYearId, nameEn])
+}
+
+model ReportComment {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  semesterId String
+  semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  body       String
+  authorId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([studentId, semesterId])
+}
+
+model Placement {
+  id             String       @id @default(cuid())
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  gradeId        String
+  grade          Grade        @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  sectionId      String
+  section        Section      @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  streamId       String?
+  stream         Stream?      @relation(fields: [streamId], references: [id], onDelete: Restrict)
+  isRepeater     Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([studentId, academicYearId])
+  @@index([sectionId, academicYearId])
+}
+
+model TeacherAssignment {
+  id             String       @id @default(cuid())
+  teacherId      String
+  teacher        Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subjectId      String
+  subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  sectionId      String
+  section        Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([teacherId, subjectId, sectionId, academicYearId])
+  @@index([academicYearId, sectionId])
+}
+
+model Mark {
+  id          String              @id @default(cuid())
+  studentId   String
+  student     Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId   String
+  subject     Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  semesterId  String
+  semester    Semester            @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  componentId String
+  component   AssessmentComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  score       Float
+  enteredById String?
+  enteredBy   User?               @relation("MarkEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([studentId, semesterId, componentId])
+  @@index([studentId, semesterId])
+  @@index([semesterId, subjectId])
+}
+
+model ImportBatch {
+  id        String   @id @default(cuid())
+  kind      String
+  summary   Json
+  createdBy String
+  createdAt DateTime @default(now())
+}
+
+model SyncLog {
+  id        String   @id @default(cuid())
+  direction String
+  detail    String
+  createdAt DateTime @default(now())
+}
+
+model Tombstone {
+  id        String   @id @default(cuid())
+  entity    String
+  entityId  String
+  deletedAt DateTime @default(now())
+
+  @@unique([entity, entityId])
+}

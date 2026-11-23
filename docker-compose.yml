@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: abdinono
+      POSTGRES_PASSWORD: abdinono
+      POSTGRES_DB: abdinono
+    volumes:
+      - abdinono-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U abdinono -d abdinono"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://abdinono:abdinono@db:5432/abdinono
+      DIRECT_URL: postgresql://abdinono:abdinono@db:5432/abdinono
+      AUTH_SECRET: ${AUTH_SECRET:-local-abdi-nono-change-this-secret}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-local-dev-admin}
+      DEPLOYMENT_MODE: local
+      DEMO_HINTS: ${DEMO_HINTS:-true}
+      COOKIE_SECURE: "false"
+      SYNC_REMOTE_URL: ${SYNC_REMOTE_URL:-}
+      SYNC_TOKEN: ${SYNC_TOKEN:-}
+      PORT: 43123
+    ports:
+      - "43123:43123"
+volumes:
+  abdinono-data:

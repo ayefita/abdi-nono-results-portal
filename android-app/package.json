@@ -1,0 +1,20 @@
+{
+  "name": "abdi-nono-results-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Android wrapper for the Abdi Nono Model Primary School results site.",
+  "scripts": {
+    "config": "node configure.mjs",
+    "sync": "node configure.mjs && cap sync android",
+    "add:android": "node configure.mjs && cap add android && node brand.mjs",
+    "apk": "node configure.mjs && cap sync android && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/app": "^7.1.0",
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3"
+  }
+}

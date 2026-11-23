@@ -1,0 +1,17 @@
+{
+  "appId": "school.abdinono.results",
+  "appName": "Abdi Nono Results",
+  "webDir": "www",
+  "server": {
+    "url": "https://placeholder.abdinono.invalid",
+    "androidScheme": "https",
+    "errorPath": "offline.html",
+    "allowNavigation": [
+      "*"
+    ]
+  },
+  "android": {
+    "backgroundColor": "#083c2b",
+    "allowMixedContent": false
+  }
+}

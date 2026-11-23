@@ -1,0 +1,45 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "android-v*"
+
+jobs:
+  debug-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install Android dependencies
+        run: npm ci
+      - name: Point the wrapper at the site URL
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: node configure.mjs
+      - name: Add the Android project when it is not already in git
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+          node brand.mjs || true
+          npx cap sync android
+      - name: Build a debug APK
+        working-directory: android-app/android
+        run: chmod +x ./gradlew && ./gradlew assembleDebug
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: abdi-nono-results-debug
+          path: android-app/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

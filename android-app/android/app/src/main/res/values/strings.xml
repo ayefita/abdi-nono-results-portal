@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Abdi Nono Results</string>
+    <string name="title_activity_main">Abdi Nono Results</string>
+    <string name="package_name">school.abdinono.results</string>
+    <string name="custom_url_scheme">school.abdinono.results</string>
+</resources>
